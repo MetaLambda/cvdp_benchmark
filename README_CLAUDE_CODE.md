@@ -144,16 +144,16 @@ Claude Code headless mode supports parallel execution via the `--threads` flag:
 
 ## How It Works
 
-The integration uses Claude Code's `--print` flag (headless mode) to run prompts non-interactively:
+The integration uses Claude Code's `-p` / `--print` flag (headless mode) to run prompts non-interactively:
 
 ```
-claude --print --model <model> --max-turns 1 --output-format text --prompt -
+claude -p --model <model> --max-turns 1 --output-format text --append-system-prompt "<system prompt>" "<user prompt>"
 ```
 
-The prompt is passed via stdin to avoid shell escaping issues. The flow is:
+The user prompt is passed as a positional argument and the system prompt via `--append-system-prompt`. The flow is:
 
 1. The benchmark constructs a system prompt + user prompt (same as for API-based models)
-2. The combined prompt is sent to the `claude` CLI via stdin
+2. The system prompt is passed via `--append-system-prompt` and the user prompt as a positional argument
 3. Claude Code handles authentication, model routing, and API calls internally
 4. The text response is parsed by the same `ModelHelpers` used by all other model backends
 5. Parsed output is evaluated by the standard test harness (Docker-based simulation)
@@ -164,7 +164,8 @@ The prompt is passed via stdin to avoid shell escaping issues. The flow is:
 run_benchmark.py
     -> ModelFactory.create_model("claude-code-sonnet")
         -> ClaudeCodeInstance
-            -> subprocess: claude --print --model claude-sonnet-4-6 ...
+            -> subprocess: claude -p --model claude-sonnet-4-6 \
+                  --append-system-prompt "..." "user prompt"
                 -> Claude Code handles auth & API calls
             <- stdout: model response text
         -> ModelHelpers.parse_model_response()

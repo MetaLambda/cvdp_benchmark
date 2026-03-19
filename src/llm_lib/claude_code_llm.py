@@ -152,11 +152,8 @@ class ClaudeCodeInstance:
                 logging.error(f"Failed to write prompt log to {prompt_log}: {str(e)}")
                 raise
 
-        # Build the combined prompt for Claude Code
-        full_prompt = f"{system_prompt}\n\n{prompt}"
-
-        # Call Claude Code CLI
-        content = self._call_claude_cli(full_prompt, timeout)
+        # Call Claude Code CLI with separate system and user prompts
+        content = self._call_claude_cli(prompt, system_prompt, timeout)
 
         if content is None:
             return {}, False
@@ -172,18 +169,24 @@ class ClaudeCodeInstance:
 
         return helper.parse_model_response(content, files, expected_single_file)
 
-    def _call_claude_cli(self, prompt: str, timeout: int) -> Optional[str]:
+    def _call_claude_cli(self, user_prompt: str, system_prompt: str, timeout: int) -> Optional[str]:
         """
         Call the claude CLI in headless mode.
 
+        Uses the syntax: claude -p "user prompt" --append-system-prompt "system prompt"
+        where -p (--print) enables headless mode and the user prompt is a positional argument.
+
         Args:
-            prompt: The full prompt to send
+            user_prompt: The user prompt to send
+            system_prompt: The system prompt to prepend
             timeout: Timeout in seconds
 
         Returns:
             The response text, or None on failure
         """
-        cmd = ["claude", "--print"]
+        # Build command: claude -p [options] "prompt"
+        # -p / --print enables headless mode; the prompt is a positional arg
+        cmd = ["claude", "-p"]
 
         # Add model flag if specified
         if self._claude_model:
@@ -195,16 +198,20 @@ class ClaudeCodeInstance:
         # Use text output format for clean response
         cmd.extend(["--output-format", "text"])
 
-        # Pass the prompt via stdin to avoid shell escaping issues
-        cmd.extend(["--prompt", "-"])
+        # Set system prompt (appended to Claude Code's default system prompt)
+        if system_prompt:
+            cmd.extend(["--append-system-prompt", system_prompt])
+
+        # The user prompt is the positional argument (must come last)
+        cmd.append(user_prompt)
 
         if self.debug:
-            logging.debug(f"Claude Code CLI command: {' '.join(cmd)}")
+            logging.debug(f"Claude Code CLI command: {cmd[0]} -p [options] <prompt>")
+            logging.debug(f"Full command args count: {len(cmd)}")
 
         try:
             result = subprocess.run(
                 cmd,
-                input=prompt,
                 capture_output=True,
                 text=True,
                 timeout=timeout
