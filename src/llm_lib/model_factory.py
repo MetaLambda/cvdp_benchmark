@@ -12,6 +12,7 @@ from .openai_llm import OpenAI_Instance
 from .openai_llm_responses import OpenAI_Responses_Instance
 from .subjective_score_model import SubjectiveScoreModel_Instance
 from .local_inference_model import LocalInferenceModel
+from .claude_code_llm import ClaudeCodeInstance
 
 logging.basicConfig(level=logging.INFO)
 
@@ -35,10 +36,16 @@ class ModelFactory:
             
             # Subjective scoring model
             "sbj_score": self._create_subjective_score_instance,
-            
+
             # Local inference models
             "local_export": self._create_local_export_instance,
             "local_import": self._create_local_import_instance,
+
+            # Claude Code (headless mode) models
+            "claude-code": self._create_claude_code_instance,
+            "claude-code-opus": self._create_claude_code_instance,
+            "claude-code-sonnet": self._create_claude_code_instance,
+            "claude-code-haiku": self._create_claude_code_instance,
         }
 
     def create_model(self, model_name: str, context: Any = None, key: Optional[str] = None, **kwargs) -> Any:
@@ -98,6 +105,10 @@ class ModelFactory:
         """Create a Local Import model instance"""
         file_path = kwargs.get('file_path', 'responses.jsonl')
         return LocalInferenceModel(context=context, mode='import', file_path=file_path, key=key, model=model_name)
+
+    def _create_claude_code_instance(self, model_name: str, context: Any, key: Optional[str], **kwargs) -> ClaudeCodeInstance:
+        """Create a Claude Code (headless mode) model instance"""
+        return ClaudeCodeInstance(context=context, key=key, model=model_name)
 
     def register_model_type(self, model_identifier: str, factory_method):
         """
